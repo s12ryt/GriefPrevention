@@ -17,6 +17,8 @@ public final class PlatformDetection
      */
     public enum Platform
     {
+        /** Folia and Folia forks (regionised multithreading) */
+        FOLIA,
         /** Paper and Paper forks (Purpur, Pufferfish, etc.) */
         PAPER,
         /** Spigot and Spigot-based servers without Paper API */
@@ -46,12 +48,33 @@ public final class PlatformDetection
 
     private static @NotNull Platform detectPlatform()
     {
+        // Folia ships the threadedregions scheduler API. Modern Paper also
+        // implements these scheduler interfaces (routing them to the main
+        // thread), so the Folia-compatible scheduling path is safe on both.
+        if (classExists("io.papermc.paper.threadedregions.RegionizedServer"))
+        {
+            return Platform.FOLIA;
+        }
         if (classExists("com.destroystokyo.paper.PaperConfig")
                 || classExists("io.papermc.paper.configuration.Configuration"))
         {
             return Platform.PAPER;
         }
         return Platform.SPIGOT;
+    }
+
+    /**
+     * Checks whether the server supports Folia's regionised schedulers.
+     * <p>
+     * True on Folia and on modern Paper (which implements the same scheduler
+     * interfaces on a single-threaded core). False on Spigot, which only
+     * offers the classic BukkitScheduler.
+     *
+     * @return true if the Folia scheduler API is available
+     */
+    public static boolean isFolia()
+    {
+        return getPlatform() == Platform.FOLIA;
     }
 
     /**

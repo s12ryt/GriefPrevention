@@ -36,7 +36,7 @@ public class KnockbackProtectionListener implements PlatformListener
         // which may not exist on all servers.
         return switch (PlatformDetection.getPlatform())
         {
-            case PAPER -> PlatformDetection.classExists("com.destroystokyo.paper.event.entity.EntityKnockbackByEntityEvent");
+            case FOLIA, PAPER -> PlatformDetection.classExists("com.destroystokyo.paper.event.entity.EntityKnockbackByEntityEvent");
             case SPIGOT -> PlatformDetection.classExists("org.bukkit.event.entity.EntityKnockbackByEntityEvent");
         };
     }
@@ -46,7 +46,7 @@ public class KnockbackProtectionListener implements PlatformListener
     {
         return switch (PlatformDetection.getPlatform())
         {
-            case PAPER -> new PaperKnockbackProtectionHandler(dataStore, plugin);
+            case FOLIA, PAPER -> new PaperKnockbackProtectionHandler(dataStore, plugin);
             case SPIGOT -> new SpigotKnockbackProtectionHandler(dataStore, plugin);
         };
     }

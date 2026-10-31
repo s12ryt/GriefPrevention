@@ -18,6 +18,8 @@
 
 package me.ryanhamshire.GriefPrevention;
 
+import me.ryanhamshire.GriefPrevention.platform.FoliaScheduler;
+
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -54,7 +56,7 @@ class FindUnusedClaimsTask implements Runnable
             return;
         }
 
-        GriefPrevention.instance.getServer().getScheduler().runTaskAsynchronously(GriefPrevention.instance, new CleanupUnusedClaimPreTask(claimOwnerIterator.next()));
+        FoliaScheduler.runAsync(new CleanupUnusedClaimPreTask(claimOwnerIterator.next()));
     }
 
     public void refreshUUIDs()

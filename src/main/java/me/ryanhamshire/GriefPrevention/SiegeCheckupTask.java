@@ -18,6 +18,7 @@
 
 package me.ryanhamshire.GriefPrevention;
 
+import me.ryanhamshire.GriefPrevention.platform.FoliaScheduler;
 import org.bukkit.entity.Player;
 
 import java.util.function.Supplier;
@@ -107,6 +108,16 @@ class SiegeCheckupTask implements Runnable
     //schedules another checkup later
     private void scheduleAnotherCheck()
     {
-        this.siegeData.checkupTaskID = GriefPrevention.instance.getServer().getScheduler().scheduleSyncDelayedTask(GriefPrevention.instance, this, 20L * 30);
+        // Anchor the checkup to the sieged claim's region when possible,
+        // otherwise fall back to the global scheduler.
+        if (this.siegeData.claims.isEmpty())
+        {
+            this.siegeData.checkupTask = FoliaScheduler.runGlobalDelayed(this, 20L * 30);
+        }
+        else
+        {
+            this.siegeData.checkupTask = FoliaScheduler.runAtLocationDelayed(
+                    this.siegeData.claims.get(0).getLesserBoundaryCorner(), this, 20L * 30);
+        }
     }
 }

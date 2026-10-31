@@ -140,20 +140,25 @@
     </build>
 
     <dependencies>
-        <!-- Bukkit API. Bukkit has never ever deployed a release version -->
-        <dependency>
-            <groupId>org.spigotmc</groupId>
-            <artifactId>spigot-api</artifactId>
-            <version>26.3-R0.1-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Paper API for Paper-specific features (optional at runtime) -->
+        <!-- Paper API first: Maven resolves org.bukkit classes from the first
+             declared dependency, and we need Paper's Folia scheduler API
+             (Bukkit#getGlobalRegionScheduler, Entity#getScheduler, ...) for
+             the Folia compatibility layer. Paper-api is a superset of the
+             Spigot API. Kept provided/optional so a pure-Spigot runtime never
+             touches these classes. -->
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
             <version>[26.3.build,)</version>
             <scope>provided</scope>
             <optional>true</optional>
+        </dependency>
+        <!-- Spigot API for remaining Spigot-only compatibility (shadowed by paper-api above) -->
+        <dependency>
+            <groupId>org.spigotmc</groupId>
+            <artifactId>spigot-api</artifactId>
+            <version>26.3-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
         </dependency>
         <!-- Worldguard dependency -->
         <dependency>

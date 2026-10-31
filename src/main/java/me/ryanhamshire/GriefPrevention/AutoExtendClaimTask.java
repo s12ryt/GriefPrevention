@@ -1,6 +1,6 @@
 package me.ryanhamshire.GriefPrevention;
 
-import org.bukkit.Bukkit;
+import me.ryanhamshire.GriefPrevention.platform.FoliaScheduler;
 import org.bukkit.Chunk;
 import org.bukkit.ChunkSnapshot;
 import org.bukkit.Location;
@@ -46,8 +46,8 @@ class AutoExtendClaimTask implements Runnable
                 {
                     Chunk chunk = world.getChunkAt(chunkX, chunkZ);
 
-                    // If we're on the main thread, access to tile entities will speed up the process.
-                    if (Bukkit.isPrimaryThread())
+                    // If we're on a tick thread, access to tile entities will speed up the process.
+                    if (FoliaScheduler.isTickThread())
                     {
                         // Find the lowest non-natural storage block in the chunk.
                         // This way chests, barrels, etc. are always protected even if player block definitions are lacking.
@@ -67,8 +67,7 @@ class AutoExtendClaimTask implements Runnable
             }
         }
 
-        Bukkit.getScheduler().runTaskAsynchronously(
-                GriefPrevention.instance,
+        FoliaScheduler.runAsync(
                 new AutoExtendClaimTask(claim, snapshots, world.getEnvironment(), lowestLootableTile));
     }
 
@@ -101,7 +100,9 @@ class AutoExtendClaimTask implements Runnable
         int newY = this.getLowestBuiltY();
         if (newY < this.claim.getLesserBoundaryCorner().getBlockY())
         {
-            Bukkit.getScheduler().runTask(GriefPrevention.instance, new ExecuteExtendClaimTask(claim, newY));
+            // Apply the claim change on the thread owning the claim's region.
+            FoliaScheduler.runAtLocation(
+                    this.claim.getLesserBoundaryCorner(), new ExecuteExtendClaimTask(claim, newY));
         }
     }
 

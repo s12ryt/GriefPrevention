@@ -22,6 +22,7 @@ import com.google.common.io.Files;
 import com.griefprevention.visualization.BoundaryVisualization;
 import com.griefprevention.visualization.VisualizationType;
 import me.ryanhamshire.GriefPrevention.events.ClaimModifiedEvent;
+import me.ryanhamshire.GriefPrevention.platform.FoliaScheduler;
 import me.ryanhamshire.GriefPrevention.events.ClaimResizeEvent;
 import me.ryanhamshire.GriefPrevention.events.ClaimCreatedEvent;
 import me.ryanhamshire.GriefPrevention.events.ClaimDeletedEvent;
@@ -64,6 +65,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -78,8 +80,10 @@ public abstract class DataStore
     protected ConcurrentHashMap<String, Integer> permissionToBonusBlocksMap = new ConcurrentHashMap<>();
 
     //in-memory cache for claim data
-    ArrayList<Claim> claims = new ArrayList<>();
-    ConcurrentHashMap<Long, ArrayList<Claim>> chunksToClaimsMap = new ConcurrentHashMap<>();
+    //the master list of all claims, thread-safe for concurrent region-thread reads on Folia
+    final CopyOnWriteArrayList<Claim> claims = new CopyOnWriteArrayList<>();
+    //reverse lookup map from chunk hash to claims in that chunk
+    final ConcurrentHashMap<Long, CopyOnWriteArrayList<Claim>> chunksToClaimsMap = new ConcurrentHashMap<>();
 
     //in-memory cache for messages
     private String[] messages;
@@ -499,10 +503,12 @@ public abstract class DataStore
         ArrayList<Long> chunkHashes = claim.getChunkHashes();
         for (Long chunkHash : chunkHashes)
         {
-            ArrayList<Claim> claimsInChunk = this.chunksToClaimsMap.get(chunkHash);
+            List<Claim> claimsInChunk = this.chunksToClaimsMap.get(chunkHash);
             if (claimsInChunk == null)
             {
-                this.chunksToClaimsMap.put(chunkHash, claimsInChunk = new ArrayList<>());
+                CopyOnWriteArrayList<Claim> newChunkList = new CopyOnWriteArrayList<>();
+                claimsInChunk = newChunkList;
+                this.chunksToClaimsMap.put(chunkHash, newChunkList);
             }
 
             claimsInChunk.add(claim);
@@ -514,7 +520,7 @@ public abstract class DataStore
         ArrayList<Long> chunkHashes = claim.getChunkHashes();
         for (Long chunkHash : chunkHashes)
         {
-            ArrayList<Claim> claimsInChunk = this.chunksToClaimsMap.get(chunkHash);
+            List<Claim> claimsInChunk = this.chunksToClaimsMap.get(chunkHash);
             if (claimsInChunk != null)
             {
                 for (Iterator<Claim> it = claimsInChunk.iterator(); it.hasNext(); )
@@ -760,7 +766,7 @@ public abstract class DataStore
 
         //find a top level claim
         Long chunkID = getChunkHash(location);
-        ArrayList<Claim> claimsInChunk = this.chunksToClaimsMap.get(chunkID);
+        List<Claim> claimsInChunk = this.chunksToClaimsMap.get(chunkID);
         if (claimsInChunk == null) return null;
 
         for (Claim claim : claimsInChunk)
@@ -817,7 +823,7 @@ public abstract class DataStore
 
     public Collection<Claim> getClaims(int chunkx, int chunkz)
     {
-        ArrayList<Claim> chunkClaims = this.chunksToClaimsMap.get(getChunkHash(chunkx, chunkz));
+        List<Claim> chunkClaims = this.chunksToClaimsMap.get(getChunkHash(chunkx, chunkz));
         if (chunkClaims != null)
         {
             return Collections.unmodifiableCollection(chunkClaims);
@@ -967,7 +973,7 @@ public abstract class DataStore
         newClaim.parent = parent;
 
         //ensure this new claim won't overlap any existing claims
-        ArrayList<Claim> claimsToCheck;
+        List<Claim> claimsToCheck;
         if (newClaim.parent != null)
         {
             claimsToCheck = newClaim.parent.children;
@@ -1161,7 +1167,7 @@ public abstract class DataStore
         //why isn't this a "repeating" task?
         //because depending on the status of the siege at the time the task runs, there may or may not be a reason to run the task again
         SiegeCheckupTask task = new SiegeCheckupTask(siegeData);
-        siegeData.checkupTaskID = GriefPrevention.instance.getServer().getScheduler().scheduleSyncDelayedTask(GriefPrevention.instance, task, 20L * 30);
+        siegeData.checkupTask = FoliaScheduler.runAtLocationDelayed(defenderClaim.getLesserBoundaryCorner(), task, 20L * 30);
     }
 
     //ends a siege
@@ -1227,7 +1233,7 @@ public abstract class DataStore
         }
 
         //cancel the siege checkup task
-        GriefPrevention.instance.getServer().getScheduler().cancelTask(siegeData.checkupTaskID);
+        if (siegeData.checkupTask != null) siegeData.checkupTask.cancel();
 
         //notify everyone who won and lost
         if (winnerName != null && loserName != null)
@@ -1247,10 +1253,15 @@ public abstract class DataStore
 
                 //schedule a task to secure the claims in about 5 minutes
                 SecureClaimTask task = new SecureClaimTask(siegeData);
-
-                GriefPrevention.instance.getServer().getScheduler().scheduleSyncDelayedTask(
-                        GriefPrevention.instance, task, 20L * GriefPrevention.instance.config_siege_doorsOpenSeconds
-                );
+                long secureDelayTicks = 20L * GriefPrevention.instance.config_siege_doorsOpenSeconds;
+                if (siegeData.claims.isEmpty())
+                {
+                    FoliaScheduler.runGlobalDelayed(task, secureDelayTicks);
+                }
+                else
+                {
+                    FoliaScheduler.runAtLocationDelayed(siegeData.claims.get(0).getLesserBoundaryCorner(), task, secureDelayTicks);
+                }
             }
         }
 
@@ -2001,7 +2012,7 @@ public abstract class DataStore
             {
                 Chunk chunk = location.getWorld().getChunkAt(chunk_x, chunk_z);
                 Long chunkID = getChunkHash(chunk.getBlock(0, 0, 0).getLocation());
-                ArrayList<Claim> claimsInChunk = this.chunksToClaimsMap.get(chunkID);
+                List<Claim> claimsInChunk = this.chunksToClaimsMap.get(chunkID);
                 if (claimsInChunk != null)
                 {
                     for (Claim claim : claimsInChunk)

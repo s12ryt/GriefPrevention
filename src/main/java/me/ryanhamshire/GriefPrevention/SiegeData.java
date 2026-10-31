@@ -18,6 +18,7 @@
 
 package me.ryanhamshire.GriefPrevention;
 
+import me.ryanhamshire.GriefPrevention.platform.GPTaskHandle;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -28,7 +29,7 @@ public class SiegeData
     public Player defender;
     public Player attacker;
     public ArrayList<Claim> claims;
-    public int checkupTaskID;
+    public GPTaskHandle checkupTask;
 
     public SiegeData(Player attacker, Player defender, Claim claim)
     {

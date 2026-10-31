@@ -4,6 +4,7 @@ import me.ryanhamshire.GriefPrevention.Claim;
 import me.ryanhamshire.GriefPrevention.CustomLogEntryTypes;
 import me.ryanhamshire.GriefPrevention.GriefPrevention;
 import me.ryanhamshire.GriefPrevention.PlayerData;
+import me.ryanhamshire.GriefPrevention.platform.FoliaScheduler;
 import com.griefprevention.events.BoundaryVisualizationEvent;
 import com.griefprevention.util.IntVector;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
@@ -97,8 +98,8 @@ public abstract class BoundaryVisualization
      */
     protected void scheduleRevert(@NotNull Player player, @NotNull PlayerData playerData)
     {
-        GriefPrevention.instance.getServer().getScheduler().scheduleSyncDelayedTask(
-                GriefPrevention.instance,
+        FoliaScheduler.runAtEntityDelayed(
+                player,
                 () -> {
                     // Only revert if this is the active visualization.
                     if (playerData.getVisibleBoundaries() == this) playerData.setVisibleBoundaries(null);
@@ -277,8 +278,8 @@ public abstract class BoundaryVisualization
         // If they are online and in the same world as the visualization, display the visualization next tick.
         if (visualization.canVisualize(player))
         {
-            GriefPrevention.instance.getServer().getScheduler().scheduleSyncDelayedTask(
-                    GriefPrevention.instance,
+            FoliaScheduler.runAtEntityDelayed(
+                    player,
                     new DelayedVisualizationTask(visualization, playerData, event),
                     1L);
         }

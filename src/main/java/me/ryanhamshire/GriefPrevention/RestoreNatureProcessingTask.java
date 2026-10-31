@@ -18,6 +18,7 @@
 
 package me.ryanhamshire.GriefPrevention;
 
+import me.ryanhamshire.GriefPrevention.platform.FoliaScheduler;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -184,9 +185,9 @@ class RestoreNatureProcessingTask implements Runnable
         //remove any player-placed leaves
         ///this.removePlayerLeaves();
 
-        //schedule main thread task to apply the result to the world
+        //schedule a task on the region owning the blocks to apply the result to the world
         RestoreNatureExecutionTask task = new RestoreNatureExecutionTask(this.snapshots, this.miny, this.lesserBoundaryCorner, this.greaterBoundaryCorner, this.player);
-        GriefPrevention.instance.getServer().getScheduler().scheduleSyncDelayedTask(GriefPrevention.instance, task);
+        FoliaScheduler.runAtLocation(this.lesserBoundaryCorner, task);
     }
 
 

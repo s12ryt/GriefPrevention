@@ -18,6 +18,7 @@
 
 package me.ryanhamshire.GriefPrevention;
 
+import me.ryanhamshire.GriefPrevention.platform.FoliaScheduler;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Boat;
@@ -142,6 +143,6 @@ class EntityCleanupTask implements Runnable
         }
 
         EntityCleanupTask task = new EntityCleanupTask(nextRunPercentageStart);
-        GriefPrevention.instance.getServer().getScheduler().scheduleSyncDelayedTask(GriefPrevention.instance, task, 20L * 60 * 1);
+        FoliaScheduler.runGlobalDelayed(task, 20L * 60 * 1);
     }
 }

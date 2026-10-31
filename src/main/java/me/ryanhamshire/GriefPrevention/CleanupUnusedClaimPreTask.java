@@ -18,6 +18,7 @@
 
 package me.ryanhamshire.GriefPrevention;
 
+import me.ryanhamshire.GriefPrevention.platform.FoliaScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 
@@ -82,7 +83,9 @@ class CleanupUnusedClaimPreTask implements Runnable
             return;
         }
 
-        //pass it back to the main server thread, where it's safe to delete a claim if needed
-        Bukkit.getScheduler().scheduleSyncDelayedTask(GriefPrevention.instance, new CleanupUnusedClaimTask(claimToExpire, ownerData, ownerInfo), 1L);
+        //pass it back to the region owning the claim, where it's safe to delete a claim if needed
+        FoliaScheduler.runAtLocationDelayed(
+                claimToExpire.getLesserBoundaryCorner(),
+                new CleanupUnusedClaimTask(claimToExpire, ownerData, ownerInfo), 1L);
     }
 }
